@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+	<meta charset="UTF-8" />
+	<title>Admin Panel - OM SAI RAM COMMUNICATION</title>
+<style>
+    body { font-family: Arial, sans-serif; background: #f2f2f2; padding: 20px; }
+    h2 { color: #007BFF; }
+    form input, form textarea, form select {
+      width: 100%; padding: 10px; margin: 6px 0;
+      font-size: 14px; border-radius: 5px; border: 1px solid #ccc;
+    }
+    form button {
+      background: #28a745; color: white; padding: 10px 20px;
+      border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;
+    }
+    ul { margin-top: 10px; list-style: none; padding-left: 0; }
+    li {
+      background: white; margin: 10px 0; padding: 10px;
+      border-radius: 5px; box-shadow: 0 0 5px rgba(0,0,0,0.1); position: relative;
+    }
+    .delete-btn, .toggle-stock-btn {
+      position: absolute; top: 10px; border: none; padding: 5px 10px;
+      color: white; border-radius: 5px; cursor: pointer;
+    }
+    .delete-btn { right: 10px; background: red; }
+    .toggle-stock-btn { right: 90px; background: orange; }
+    .section { margin-top: 40px; }
+</style>
+  </head>
+  <body>
+
+	<!-- PHONE SECTION -->
+	<h2>Add New Phone</h2>
+	<form id="phone-form">
+	  <input type="text" id="name" placeholder="Phone Name" required>
+	  <input type="text" id="price" placeholder="Price" required>
+	  <select id="rating">
+		<option value="">Select Rating</option>
+		<option value="1">1 Star</option><option value="2">2 Star</option>
+		<option value="3">3 Star</option><option value="4">4 Star</option>
+		<option value="5">5 Star</option>
+	  </select>
+	  <textarea id="description" placeholder="Description"></textarea>
+	  <input type="number" id="quantity" placeholder="Quantity">
+	  <label><input type="checkbox" id="outofstock"> Out of Stock</label><br><br>
+	  <button type="submit">Add Phone</button>
+	</form>
+	<h3>Uploaded Phones:</h3>
+	<ul id="phone-list"></ul>
+
+	<!-- OFFER SECTION -->
+	<div class="section">
+	  <h2>Add Latest Offer</h2>
+	  <form id="offer-form">
+		<input type="text" id="offer-name" placeholder="Offer Title" required>
+		<textarea id="offer-description" placeholder="Offer Description"></textarea>
+		<input type="text" id="offer-price" placeholder="Discount/Offer Price">
+		<label><input type="checkbox" id="offer-outofstock"> Out of Stock</label><br><br>
+		<button type="submit">Add Offer</button>
+	  </form>
+
+	  <h3>Uploaded Offers:</h3>
+	  <ul id="offer-list"></ul>
+	</div>
+
+	<!-- Firebase Script -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2pT0X5y_LuGKsjsPGm1HeZq_0TIq6Wi4",
+      authDomain: "jarvjs-1ac8a.firebaseapp.com",
+      databaseURL: "https://jarvjs-1ac8a-default-rtdb.firebaseio.com",
+      projectId: "jarvjs-1ac8a",
+      storageBucket: "jarvjs-1ac8a.appspot.com",
+      messagingSenderId: "632207839117",
+      appId: "1:632207839117:web:e1ea249c4a737d5917f7c4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // PHONE FORM SUBMIT
+    const phoneForm = document.getElementById("phone-form");
+    const phoneList = document.getElementById("phone-list");
+
+    phoneForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const phone = {
+        name: document.getElementById("name").value,
+        price: document.getElementById("price").value,
+        rating: document.getElementById("rating").value,
+        description: document.getElementById("description").value,
+        quantity: document.getElementById("quantity").value,
+        outofstock: document.getElementById("outofstock").checked
+      };
+      push(ref(db, "phones/"), phone);
+      phoneForm.reset();
+    });
+
+    function showPhones() {
+      onValue(ref(db, "phones/"), (snapshot) => {
+        phoneList.innerHTML = "";
+        const data = snapshot.val();
+        if (data) {
+          Object.entries(data).forEach(([key, phone]) => {
+            const li = document.createElement("li");
+            li.innerHTML = `
+              <strong>${phone.name}</strong> - ₹${phone.price}
+              ${phone.outofstock ? "<span style='color:red;'>(Out of Stock)</span>" : ""}
+              ${phone.quantity ? `<br><small>Stock: ${phone.quantity}</small>` : ""}
+              ${phone.rating ? `<br><small>Rating: ${"★".repeat(phone.rating)}</small>` : ""}
+              ${phone.description ? `<br><small>${phone.description}</small>` : ""}
+              <button class="toggle-stock-btn">Toggle Stock</button>
+              <button class="delete-btn">Delete</button>
+            `;
+            li.querySelector(".delete-btn").onclick = () => remove(ref(db, "phones/" + key));
+            li.querySelector(".toggle-stock-btn").onclick = () =>
+              update(ref(db, "phones/" + key), { outofstock: !phone.outofstock });
+            phoneList.appendChild(li);
+          });
+        }
+      });
+    }
+
+    showPhones();
+
+    // OFFER FORM SUBMIT
+    const offerForm = document.getElementById("offer-form");
+    const offerList = document.getElementById("offer-list");
+
+    offerForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const offer = {
+        name: document.getElementById("offer-name").value,
+        description: document.getElementById("offer-description").value,
+        price: document.getElementById("offer-price").value,
+        outofstock: document.getElementById("offer-outofstock").checked
+      };
+      push(ref(db, "offers/"), offer);
+      offerForm.reset();
+    });
+
+    function showOffers() {
+      onValue(ref(db, "offers/"), (snapshot) => {
+        offerList.innerHTML = "";
+        const data = snapshot.val();
+        if (data) {
+          Object.entries(data).forEach(([key, offer]) => {
+            const li = document.createElement("li");
+            li.innerHTML = `
+              <strong>${offer.name}</strong> ${offer.outofstock ? "<span style='color:red;'>(Out of Stock)</span>" : ""}
+              ${offer.price ? `<br><small>Price/Deal: ${offer.price}</small>` : ""}
+              ${offer.description ? `<br><small>${offer.description}</small>` : ""}
+              <button class="toggle-stock-btn">Toggle Stock</button>
+              <button class="delete-btn">Delete</button>
+            `;
+            li.querySelector(".delete-btn").onclick = () => remove(ref(db, "offers/" + key));
+            li.querySelector(".toggle-stock-btn").onclick = () =>
+              update(ref(db, "offers/" + key), { outofstock: !offer.outofstock });
+            offerList.appendChild(li);
+          });
+        }
+      });
+    }
+
+    showOffers();
+</script>
+  </body>
+</html>
